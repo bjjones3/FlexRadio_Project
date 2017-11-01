@@ -32,7 +32,7 @@ int Board_Select_Value()   //Determines which board is Connected
         board = 2;
     else if(board_select >= 1900 && board_select <= 2100) //1.9V to 2.1V
         board = 1;
-    else if(board_select >= 2900  && board_select <= 3100) //2.9V to 3.1V
+    else if(board_select >= 3000  && board_select <= 3400) //3.0V to 3.4V
         board = 0;
     else //If board_select is outside of all parameters, toggle one LED cont.
         while(1)

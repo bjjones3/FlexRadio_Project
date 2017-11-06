@@ -21,6 +21,10 @@ int Board_Select_Value()   //Determines which board is Connected
     Board_Select_TRIS = INPUT;   //Sets to Input
     Board_Select_SetAnalogMode();
     
+    bool board_ok = true;
+    
+    while(board_ok)
+    {
     ADCC_StartConversion(Board_Select);
     
     while(!ADCC_IsConversionDone());
@@ -29,17 +33,25 @@ int Board_Select_Value()   //Determines which board is Connected
     board_select = board_select*(4.096/1024)*1000; //reports board_select in mV
     
     if(board_select >= 900 && board_select <= 1100) //0.9V to 1.1V
-        board = 2;
+    {
+        board = 2; 
+        board_ok = false;
+    }
     else if(board_select >= 1900 && board_select <= 2100) //1.9V to 2.1V
-        board = 1;
+    {
+        board = 1; 
+        board_ok = false;
+    }
     else if(board_select >= 3000  && board_select <= 3400) //3.0V to 3.4V
-        board = 0;
+    {
+        board = 0; 
+        board_ok = false;
+    }
     else //If board_select is outside of all parameters, toggle one LED cont.
-        while(1)
-        {
             LED1_LAT= ~LED1_LAT;
-            __delay_ms(5000); //wait for 5 seconds before toggle
-        }
+        
+            __delay_ms(5000); //wait for 5 seconds before restart
+    }
     
     return board;
 }

@@ -1,20 +1,24 @@
 #include "mcc_generated_files/mcc.h"
 #include <xc.h>
 
-int board_select, board, result, light;
-int green = 0;  //Green is low due to hardware setup
-int red = 1;    //Red is high due to hardware setup
+uint16_t board_select, board, result, light;
+uint16_t green = 0;
+uint16_t red = 1;
 
-static int Board_High[3][13]= {
-    {3468,3468,3468,3316,2516,2664,3316,2516,1816,1516,1016,1016,908},
-    {0,0,3468,2664,3316,2664,3316,2516,1816,2208,1016,1816,3316},
-    {3468,3468,3468,2516,0,0,3316,1816,1816,1216,0,0,0}
-}; //All Upper limit values for each of the boards in mV. 0's denote not used
-static int Board_Low[3][13] = {
-    {3440,3440,3440,3292,2492,2644,3292,2492,1792,1492,992,992,892},
-    {0,0,3440,2644,3292,2644,3292,2492,1792,2192,992,1792,3292},
-    {3440,3440,3440,2492,0,0,3292,1792,1792,1192,0,0,0}
-}; //All Lower limit values for each of the boards in mV. 0's denote not used
+
+//All Upper limit values for each of the boards in mV.
+static  const uint16_t Board_High [3][13] = {
+{3750, 3750, 3750, 3550, 5250, 5550, 3450, 2600, 1900, 1600, 1050, 1075, 950},
+{3750, 3750, 3750, 5550, 3450, 5550, 3450, 2600, 1900, 2300, 1040, 1900, 3450},
+{3750, 3750, 3750, 5250, 5250, 5550, 3450, 2600, 1900, 1300, 1100, 1075, 1000}
+}; 
+
+// All Lower limit values for each of the boards in mV. 
+static const uint16_t Board_Low [3][13] = {
+{3000, 3000, 3000, 3150, 4750, 5200, 3150, 2400, 1700, 1400,  950, 800, 850},
+{3000, 3000, 3000, 5100, 3150, 5200, 3150, 2400, 1700, 2100,  960, 1700, 3150},
+{3000, 3000, 3000, 4750, 4750, 5200, 3150, 2400, 1700, 1100,  900, 800, 800}
+}; 
 
 int Board_Select_Value()   //Determines which board is Connected
 {
@@ -30,7 +34,7 @@ int Board_Select_Value()   //Determines which board is Connected
     while(!ADCC_IsConversionDone());
         board_select = ADCC_GetConversionResult();   //Reads value on Pin
         
-    board_select = board_select*(4.096/1024)*1000; //reports board_select in mV
+    board_select = board_select*4; //reports board_select in mV. Step value is 1/4 mV value
     
     if(board_select >= 900 && board_select <= 1100) //0.9V to 1.1V
     {
@@ -48,29 +52,32 @@ int Board_Select_Value()   //Determines which board is Connected
         board_ok = false;
     }
     else //If board_select is outside of all parameters, toggle one LED cont.
-            LED1_LAT= ~LED1_LAT;
+        LED1_LAT= ~LED1_LAT;
         
-            __delay_ms(5000); //wait for 5 seconds before restart
+        __delay_ms(5000); //wait for 5 seconds before restart
     }
     
     return board;
 }
 
-bool LED_Value(int high, int low, adcc_channel_t channel)
-{
+int LED_Value(uint16_t (*high)[13], uint16_t (*low)[13], adcc_channel_t channel, uint16_t b,uint16_t c)
+{   
+    uint16_t lo = *(*(low+b)+c);    //pointer to location of lower limit
+    uint16_t hi = *(*(high+b)+c);   //pointer to location of upper limit
+    
     ADCC_StartConversion(channel);
     
     while(!ADCC_IsConversionDone());
+    
     result = ADCC_GetConversionResult();
     
-        result = result*(4.096/1024)*1000;  //reports result in mV
+    result = result*4;  //reports result in mV. Step value is 1/4 mV value
     
-    if(result >= low && result <= high)
-        light = green;
+    if(result >= lo && result <= hi)
+        return green;
+    
     else
-        light = red;
-    
-    return light;
+        return red;
 }
 
 void Board_Init() //function to set up LEDs to match number of voltage sources
@@ -136,19 +143,19 @@ void main(void)
         Board_Select_Value();   //Determine which board is connected
         Board_Init();           //Sets the LEDs for the board being tested
         
-        LED1_LAT = LED_Value(Board_High[board][0],Board_Low[board][0],AND1);
-        LED2_LAT = LED_Value(Board_High[board][1],Board_Low[board][1],AND0);
-        LED3_LAT = LED_Value(Board_High[board][2],Board_Low[board][2],ANC3);
-        LED4_LAT = LED_Value(Board_High[board][3],Board_Low[board][3],ANC2);
-        LED5_LAT = LED_Value(Board_High[board][4],Board_Low[board][4],ANC1);
-        LED6_LAT = LED_Value(Board_High[board][5],Board_Low[board][5],ANC0);
-        LED7_LAT = LED_Value(Board_High[board][6],Board_Low[board][6],ANA6);
-        LED8_LAT = LED_Value(Board_High[board][7],Board_Low[board][7],ANA7);
-        LED9_LAT = LED_Value(Board_High[board][8],Board_Low[board][8],ANE2);
-        LED10_LAT = LED_Value(Board_High[board][9],Board_Low[board][9],ANE1);
-        LED11_LAT = LED_Value(Board_High[board][10],Board_Low[board][10],ANE0);
-        LED12_LAT = LED_Value(Board_High[board][11],Board_Low[board][11],ANA5);
-        LED13_LAT = LED_Value(Board_High[board][12],Board_Low[board][12],ANA4);
+        LED1_LAT = LED_Value(Board_High,Board_Low,AND1,board,0);
+        LED2_LAT = LED_Value(Board_High,Board_Low,AND0,board,1);
+        LED3_LAT = LED_Value(Board_High,Board_Low,ANC3,board,2);
+        LED4_LAT = LED_Value(Board_High,Board_Low,ANC2,board,3);
+        LED5_LAT = LED_Value(Board_High,Board_Low,ANC1,board,4);
+        LED6_LAT = LED_Value(Board_High,Board_Low,ANC0,board,5);
+        LED7_LAT = LED_Value(Board_High,Board_Low,ANA6,board,6);
+        LED8_LAT = LED_Value(Board_High,Board_Low,ANA7,board,7);
+        LED9_LAT = LED_Value(Board_High,Board_Low,ANE2,board,8);
+        LED10_LAT = LED_Value(Board_High,Board_Low,ANE1,board,9);
+        LED11_LAT = LED_Value(Board_High,Board_Low,ANE0,board,10);
+        LED12_LAT = LED_Value(Board_High,Board_Low,ANA5,board,11);
+        LED13_LAT = LED_Value(Board_High,Board_Low,ANA4,board,12);
    }
 }
 /**
